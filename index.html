@@ -1,455 +1,196 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="utf-8" />
-  <title>Pagoda + Cherry Blossoms — three.js Scene</title>
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <style>
-    html,body { height:100%; margin:0; background:#ffffff; }
-    #canvas { width:100%; height:100%; display:block; }
-    .credit {
-      position: absolute;
-      left: 12px;
-      bottom: 12px;
-      font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
-      color: #333;
-      font-size: 12px;
-      background: rgba(255,255,255,0.8);
-      padding:6px 10px;
-      border-radius:6px;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.08);
-      pointer-events: none; /* Let clicks pass through */
-    }
-  </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kingdom Centre - Glass 3D Scene</title>
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            background: linear-gradient(to bottom, #cfd9df 0%, #e2ebf0 100%); /* Soft sky gradient */
+        }
+      
+        #info {
+            position: absolute;
+            bottom: 20px;
+            width: 100%;
+            text-align: center;
+            color: #555555;
+            pointer-events: none;
+            user-select: none;
+        }
+    </style>
 </head>
 <body>
-  <canvas id="canvas"></canvas>
-  <div class="credit">three.js pagoda + cherry blossoms</div>
 
-  <script type="importmap">
-{
-  "imports": {
-    "three": "https://unpkg.com/three@0.152.2/build/three.module.js",
-    "three/addons/": "https://unpkg.com/three@0.152.2/examples/jsm/"
-  }
-}
-</script>
-
-  <script type="module">
-    import * as THREE from "three";
-    import { OrbitControls } from "three/addons/controls/OrbitControls.js";
-
-    // --- Configuration ---
-    const PALETTE = {
-      sky: 0xffffff,
-      pagodaRed: 0xb94e48, // Muted reddish-brown
-      pagodaRoof: 0x3d414a, // Dark slate grey
-      pagodaGold: 0xd4af37, // Gold
-      pagodaWhite: 0xeeeeee, // Stone/White accents
-      treeWood: 0x5a4d41,
-      blossomPink1: 0xffb7c5,
-      blossomPink2: 0xffc0cb,
-      blossomPink3: 0xffe4e1
-    };
-
-    function main() {
-      const canvas = document.querySelector('#canvas');
-      const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
-      renderer.setPixelRatio(window.devicePixelRatio);
-      renderer.shadowMap.enabled = true;
-      renderer.shadowMap.type = THREE.SoftShadowMap;
-
-      const scene = new THREE.Scene();
-      scene.background = new THREE.Color(PALETTE.sky);
-      // Add some fog to blend the floor into the white background
-      scene.fog = new THREE.Fog(PALETTE.sky, 15, 60);
-
-      const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 1000);
-      camera.position.set(0, 12, 35);
-
-      const controls = new OrbitControls(camera, canvas);
-      controls.enableDamping = true;
-      controls.target.set(0, 8, 0);
-
-      // --- Lighting ---
-      const ambientLight = new THREE.AmbientLight(0xffffff, 0.7);
-      scene.add(ambientLight);
-
-      const dirLight = new THREE.DirectionalLight(0xffffff, 1.2);
-      dirLight.position.set(10, 20, 10);
-      dirLight.castShadow = true;
-      dirLight.shadow.mapSize.width = 2048;
-      dirLight.shadow.mapSize.height = 2048;
-      dirLight.shadow.camera.near = 0.5;
-      dirLight.shadow.camera.far = 50;
-      dirLight.shadow.bias = -0.001;
-      // Adjust shadow camera box
-      const d = 20;
-      dirLight.shadow.camera.left = -d;
-      dirLight.shadow.camera.right = d;
-      dirLight.shadow.camera.top = d;
-      dirLight.shadow.camera.bottom = -d;
-      scene.add(dirLight);
-      
-      // Soft fill light from opposite side
-      const fillLight = new THREE.DirectionalLight(0xffeeb1, 0.5);
-      fillLight.position.set(-10, 5, -10);
-      scene.add(fillLight);
-
-      // --- Geometry Helpers ---
-      
-      // Create a hexagonal prism (cylinder with 6 segments)
-      const hexGeo = (radiusTop, radiusBottom, height) => 
-        new THREE.CylinderGeometry(radiusTop, radiusBottom, height, 6);
-
-      // --- Builders ---
-
-      /**
-       * Creates the Pagoda structure
-       */
-      function createPagoda() {
-        const pagodaGroup = new THREE.Group();
-
-        // Materials
-        const matRed = new THREE.MeshStandardMaterial({ color: PALETTE.pagodaRed, roughness: 0.6 });
-        const matRoof = new THREE.MeshStandardMaterial({ color: PALETTE.pagodaRoof, roughness: 0.7, flatShading: true });
-        const matGold = new THREE.MeshStandardMaterial({ color: PALETTE.pagodaGold, metalness: 0.6, roughness: 0.3 });
-        const matStone = new THREE.MeshStandardMaterial({ color: PALETTE.pagodaWhite, roughness: 0.9 });
-        const matDarkWood = new THREE.MeshStandardMaterial({ color: 0x3e2723 });
-
-        // 1. Base Platform (Stone)
-        const baseRadius = 6.5;
-        const baseHeight = 1.5;
-        const baseGeo = hexGeo(baseRadius, baseRadius, baseHeight);
-        const baseMesh = new THREE.Mesh(baseGeo, matStone);
-        baseMesh.position.y = baseHeight / 2;
-        baseMesh.receiveShadow = true;
-        pagodaGroup.add(baseMesh);
-
-        // Base Railing
-        createRailing(pagodaGroup, baseRadius - 0.2, baseHeight, matStone);
-        
-        // Stairs (Simple box)
-        const stairsGeo = new THREE.BoxGeometry(3, 1.5, 3);
-        const stairs = new THREE.Mesh(stairsGeo, matStone);
-        stairs.position.set(0, 0.75, baseRadius - 1);
-        stairs.rotation.x = Math.PI / 8; // Sloped
-        stairs.receiveShadow = true;
-        pagodaGroup.add(stairs);
-
-        // 2. Tiers
-        const tiers = 5;
-        let currentY = baseHeight;
-        let currentRadius = 4.5;
-
-        for (let i = 0; i < tiers; i++) {
-          const tierGroup = new THREE.Group();
-          tierGroup.position.y = currentY;
-          
-          // Core Wall (Red)
-          const wallHeight = 2.5;
-          const wallGeo = hexGeo(currentRadius * 0.7, currentRadius * 0.7, wallHeight);
-          const wall = new THREE.Mesh(wallGeo, matRed);
-          wall.position.y = wallHeight / 2;
-          wall.castShadow = true;
-          wall.receiveShadow = true;
-          tierGroup.add(wall);
-
-          // Door/Window details (simple dark planes)
-          for(let r=0; r<6; r++) {
-             const detailGeo = new THREE.PlaneGeometry(1.2, 1.8);
-             const detail = new THREE.Mesh(detailGeo, matDarkWood);
-             const angle = (r * Math.PI) / 3;
-             const dist = (currentRadius * 0.7) * Math.cos(Math.PI/6) + 0.05; // Distance to flat face
-             detail.position.set(Math.cos(angle + Math.PI/6) * dist, wallHeight/2, Math.sin(angle + Math.PI/6) * dist);
-             detail.rotation.y = -angle - Math.PI/6;
-             tierGroup.add(detail);
-          }
-
-          // Balcony Railing (for tiers above 0)
-          if (i >= 0) {
-            const balconyGeo = hexGeo(currentRadius, currentRadius, 0.2);
-            const balcony = new THREE.Mesh(balconyGeo, matRed);
-            balcony.position.y = 0.1;
-            tierGroup.add(balcony);
-            createRailing(tierGroup, currentRadius - 0.2, 0.2, matRed, 6);
-          }
-
-          // Roof
-          // Roof consists of a main slope and a curved eave look
-          const roofHeight = 1.8;
-          const roofOverhang = 1.2;
-          const roofGeo = hexGeo(currentRadius * 0.6, currentRadius + roofOverhang, roofHeight);
-          const roof = new THREE.Mesh(roofGeo, matRoof);
-          roof.position.y = wallHeight + roofHeight / 2;
-          roof.castShadow = true;
-          tierGroup.add(roof);
-
-          // Roof Ridge details (Gold tips on corners)
-          for (let k = 0; k < 6; k++) {
-             const angle = (k * Math.PI) / 3;
-             const tipDist = (currentRadius + roofOverhang); 
-             // Simple sphere at corners
-             const tipGeo = new THREE.SphereGeometry(0.15);
-             const tip = new THREE.Mesh(tipGeo, matGold);
-             tip.position.set(Math.cos(angle)*tipDist, wallHeight + 0.2, Math.sin(angle)*tipDist);
-             tierGroup.add(tip);
-          }
-
-          pagodaGroup.add(tierGroup);
-
-          // Update metrics for next tier
-          currentY += wallHeight + roofHeight * 0.8; 
-          currentRadius *= 0.85; // Taper upwards
-        }
-
-        // 3. Finial (Top Spike)
-        const topY = currentY;
-        const finialGroup = new THREE.Group();
-        finialGroup.position.y = topY;
-        
-        const spikeBase = new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.8, 1, 8), matGold);
-        spikeBase.position.y = 0.5;
-        finialGroup.add(spikeBase);
-
-        const rings = 5;
-        for(let j=0; j<rings; j++) {
-            const ring = new THREE.Mesh(new THREE.TorusGeometry(0.3 - (j*0.04), 0.05, 4, 8), matGold);
-            ring.rotation.x = Math.PI/2;
-            ring.position.y = 1.2 + (j*0.4);
-            finialGroup.add(ring);
-            
-            const rod = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.1, 0.4, 6), matGold);
-            rod.position.y = 1.2 + (j*0.4);
-            finialGroup.add(rod);
-        }
-
-        const topGem = new THREE.Mesh(new THREE.SphereGeometry(0.3), matGold);
-        topGem.position.y = 1.2 + (rings*0.4) + 0.2;
-        finialGroup.add(topGem);
-
-        pagodaGroup.add(finialGroup);
-
-        return pagodaGroup;
-      }
-
-      function createRailing(parentGroup, radius, yPos, material, segments=6) {
-         // Create posts at corners
-         for (let i = 0; i < segments; i++) {
-            const angle = (i / segments) * Math.PI * 2;
-            const px = Math.cos(angle) * radius;
-            const pz = Math.sin(angle) * radius;
-            
-            const post = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.8, 0.2), material);
-            post.position.set(px, yPos + 0.4, pz);
-            parentGroup.add(post);
-
-            // Handrail connecting to next post
-            const nextAngle = ((i + 1) / segments) * Math.PI * 2;
-            const nx = Math.cos(nextAngle) * radius;
-            const nz = Math.sin(nextAngle) * radius;
-
-            // Midpoint
-            const mx = (px + nx) / 2;
-            const mz = (pz + nz) / 2;
-            const dist = Math.sqrt(Math.pow(nx-px, 2) + Math.pow(nz-pz, 2));
-            const angleToNext = Math.atan2(nz-pz, nx-px);
-
-            const rail = new THREE.Mesh(new THREE.BoxGeometry(dist, 0.1, 0.1), material);
-            rail.position.set(mx, yPos + 0.7, mz);
-            rail.rotation.y = -angleToNext;
-            parentGroup.add(rail);
-         }
-      }
-
-      /**
-       * Creates a procedural Tree
-       */
-      function createTree(scale = 1) {
-        const treeGroup = new THREE.Group();
-        const woodMat = new THREE.MeshStandardMaterial({ color: PALETTE.treeWood });
-        
-        // Materials for leaves - randomly pick from pinks
-        const leafMaterials = [
-            new THREE.MeshStandardMaterial({ color: PALETTE.blossomPink1, flatShading:true, side: THREE.DoubleSide }),
-            new THREE.MeshStandardMaterial({ color: PALETTE.blossomPink2, flatShading:true, side: THREE.DoubleSide }),
-            new THREE.MeshStandardMaterial({ color: PALETTE.blossomPink3, flatShading:true, side: THREE.DoubleSide })
-        ];
-
-        // Trunk
-        const trunkH = 8 * scale;
-        const trunkGeo = new THREE.CylinderGeometry(0.4 * scale, 0.8 * scale, trunkH, 7);
-        // Perturb vertices slightly for organic look? (Hard in pure geometry without modifying buffer attributes manually)
-        // Instead, let's stack slight cylinders for a bent look
-        
-        const trunk = new THREE.Mesh(trunkGeo, woodMat);
-        trunk.position.y = trunkH / 2;
-        trunk.castShadow = true;
-        treeGroup.add(trunk);
-
-        // Branches
-        const branchCount = 12;
-        for(let i=0; i<branchCount; i++) {
-            const branchContainer = new THREE.Group();
-            const yStart = (trunkH * 0.4) + Math.random() * (trunkH * 0.5);
-            branchContainer.position.set(0, yStart, 0);
-            
-            const angle = Math.random() * Math.PI * 2;
-            const lean = Math.PI / 4 + (Math.random() * 0.5); // 45 degree upwardish
-            
-            branchContainer.rotation.y = angle;
-            branchContainer.rotation.z = lean;
-
-            const branchLen = (3 + Math.random() * 4) * scale;
-            const branchGeo = new THREE.CylinderGeometry(0.1*scale, 0.3*scale, branchLen, 5);
-            branchGeo.translate(0, branchLen/2, 0); // pivot at bottom
-            
-            const branch = new THREE.Mesh(branchGeo, woodMat);
-            branchContainer.add(branch);
-            treeGroup.add(branchContainer);
-
-            // Foliage Clouds
-            // Add a cloud of "blossoms" at the end of branch
-            const foliageCount = 30;
-            const clusterRadius = 2.5 * scale;
-            
-            // InstancedMesh would be better for performance, but for 2 trees simple mesh is fine
-            // We'll create a merged geometry or just a group of small planes
-            const clusterGroup = new THREE.Group();
-            clusterGroup.position.y = branchLen;
-            
-            for(let f=0; f<foliageCount; f++) {
-                // Random position in sphere
-                const u = Math.random();
-                const v = Math.random();
-                const theta = 2 * Math.PI * u;
-                const phi = Math.acos(2 * v - 1);
-                const r = Math.cbrt(Math.random()) * clusterRadius; // cubic root for uniform distribution
-                const fx = r * Math.sin(phi) * Math.cos(theta);
-                const fy = r * Math.sin(phi) * Math.sin(theta);
-                const fz = r * Math.cos(phi);
-
-                // Random size
-                const s = (0.3 + Math.random() * 0.3) * scale;
-                const leafGeo = new THREE.PlaneGeometry(s, s);
-                // Random rotation
-                const mat = leafMaterials[Math.floor(Math.random()*leafMaterials.length)];
-                const leaf = new THREE.Mesh(leafGeo, mat);
-                leaf.position.set(fx, fy, fz);
-                leaf.rotation.set(Math.random()*Math.PI, Math.random()*Math.PI, Math.random()*Math.PI);
-                
-                clusterGroup.add(leaf);
+    <div id="info">يرج المملكه</div>
+    <script type="importmap">
+        {
+            "imports": {
+                "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+                "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
             }
-            branchContainer.add(clusterGroup);
         }
-        
-        return treeGroup;
-      }
+    </script>
 
-      // --- Scene Assembly ---
+    <script type="module">
+        import * as THREE from 'three';
+        import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+        import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
 
-      // 1. Pagoda
-      const pagoda = createPagoda();
-      scene.add(pagoda);
+        // --- SCENE SETUP ---
+        const scene = new THREE.Scene();
 
-      // 2. Trees
-      const tree1 = createTree(1.2);
-      tree1.position.set(12, 0, -5);
-      tree1.rotation.y = -0.5;
-      scene.add(tree1);
+        const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 100);
+        camera.position.set(15, 10, 20);
 
-      const tree2 = createTree(1.0);
-      tree2.position.set(-10, 0, 5);
-      tree2.rotation.y = 2;
-      scene.add(tree2);
+        const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.setPixelRatio(window.devicePixelRatio);
+        renderer.toneMapping = THREE.ACESFilmicToneMapping; // For realistic lighting
+        renderer.toneMappingExposure = 1.2;
+        renderer.shadowMap.enabled = true;
+        renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+        document.body.appendChild(renderer.domElement);
 
-      const tree3 = createTree(0.9);
-      tree3.position.set(-12, 0, -10);
-      tree3.rotation.y = 1;
-      scene.add(tree3);
-      
-      const tree4 = createTree(1.1);
-      tree4.position.set(8, 0, 8);
-      tree4.rotation.y = 3;
-      scene.add(tree4);
+        const controls = new OrbitControls(camera, renderer.domElement);
+        controls.enableDamping = true;
+        controls.target.set(0, 5, 0);
+        controls.maxPolarAngle = Math.PI / 2; // Don't go below ground
 
+        // --- ENVIRONMENT & LIGHTING ---
+        // Create a realistic indoor environment for reflections
+        const environment = new RoomEnvironment(renderer);
+        const pmremGenerator = new THREE.PMREMGenerator(renderer);
+        scene.environment = pmremGenerator.fromScene(environment).texture;
+        environment.dispose(); // Clean up
 
-      // 3. Ground Plane (Shadow catcher)
-      const planeGeo = new THREE.PlaneGeometry(200, 200);
-      const planeMat = new THREE.ShadowMaterial({ opacity: 0.1 });
-      const plane = new THREE.Mesh(planeGeo, planeMat);
-      plane.rotation.x = -Math.PI / 2;
-      plane.receiveShadow = true;
-      scene.add(plane);
+        const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
+        scene.add(ambientLight);
 
+        const directionalLight = new THREE.DirectionalLight(0xffffff, 2);
+        directionalLight.position.set(10, 20, 10);
+        directionalLight.castShadow = true;
+        directionalLight.shadow.camera.top = 15;
+        directionalLight.shadow.camera.bottom = -15;
+        directionalLight.shadow.camera.left = -15;
+        directionalLight.shadow.camera.right = 15;
+        directionalLight.shadow.mapSize.set(2048, 2048);
+        scene.add(directionalLight);
 
-      // --- Loop ---
-      
-      // Floating petals
-      const petalCount = 100;
-      const petalGeo = new THREE.PlaneGeometry(0.2, 0.2);
-      const petalMat = new THREE.MeshBasicMaterial({ color: PALETTE.blossomPink2, side: THREE.DoubleSide });
-      const petals = [];
-      
-      for(let i=0; i<petalCount; i++) {
-        const petal = new THREE.Mesh(petalGeo, petalMat);
-        petal.position.set(
-            (Math.random() - 0.5) * 40,
-            Math.random() * 20,
-            (Math.random() - 0.5) * 40
-        );
-        petal.userData = {
-            velocity: new THREE.Vector3((Math.random()-0.5)*0.05, -Math.random()*0.1, (Math.random()-0.5)*0.05),
-            rotSpeed: (Math.random()-0.5) * 0.1
-        };
-        scene.add(petal);
-        petals.push(petal);
-      }
-
-      function resizeRendererToDisplaySize(renderer) {
-        const canvas = renderer.domElement;
-        const width = canvas.clientWidth;
-        const height = canvas.clientHeight;
-        const needResize = canvas.width !== width || canvas.height !== height;
-        if (needResize) {
-          renderer.setSize(width, height, false);
-        }
-        return needResize;
-      }
-
-      function animate(time) {
-        requestAnimationFrame(animate);
-
-        if (resizeRendererToDisplaySize(renderer)) {
-          const canvas = renderer.domElement;
-          camera.aspect = canvas.clientWidth / canvas.clientHeight;
-          camera.updateProjectionMatrix();
-        }
-        
-        controls.update();
-
-        // Animate petals
-        petals.forEach(p => {
-            p.position.add(p.userData.velocity);
-            p.rotation.x += p.userData.rotSpeed;
-            p.rotation.y += p.userData.rotSpeed;
-            if(p.position.y < 0) {
-                p.position.y = 20;
-                p.position.x = (Math.random() - 0.5) * 40;
-                p.position.z = (Math.random() - 0.5) * 40;
-            }
+        // --- MATERIALS ---
+        // High-quality glass material with reflections and transmission
+        const glassMaterial = new THREE.MeshPhysicalMaterial({
+            color: 0x88ccff, // Slight blue tint
+            metalness: 0.0,
+            roughness: 0.05, // Very smooth for sharp reflections
+            transmission: 1.0, // Key for glass-like transparency
+            ior: 1.5, // Index of Refraction for glass
+            thickness: 0.5, // For realistic refraction
+            envMapIntensity: 1.5,
+            clearcoat: 1.0,
+            clearcoatRoughness: 0.0
         });
 
-        // Slow scene rotation for showcase effect
-        scene.rotation.y = Math.sin(time * 0.0001) * 0.1;
+        // Material for the base and ground
+        const baseMaterial = new THREE.MeshStandardMaterial({
+            color: 0xeeeeee,
+            roughness: 0.6,
+            metalness: 0.1
+        });
 
-        renderer.render(scene, camera);
-      }
+        const groundMaterial = new THREE.MeshStandardMaterial({
+            color: 0xaaaaaa,
+            roughness: 0.2, // Slightly reflective ground
+            metalness: 0.3
+        });
 
-      animate(0);
-    }
 
-    main();
-  </script>
+        // --- GEOMETRY ---
+        const kingdomTowerGroup = new THREE.Group();
+        scene.add(kingdomTowerGroup);
+
+        // 1. The Tower
+        const towerHeight = 12;
+        const towerWidth = 2.5;
+        const towerDepth = 1.2;
+        const archDip = 8.5; // Height where the arch curve is deepest
+
+        const shape = new THREE.Shape();
+        shape.moveTo(-towerWidth / 2, 0);
+        shape.lineTo(towerWidth / 2, 0);
+        shape.lineTo(towerWidth / 2, towerHeight);
+        // Create the parabolic arch using a quadratic curve
+        // Control point is at (0, archDip), end point is (-width/2, height)
+        shape.quadraticCurveTo(0, archDip, -towerWidth / 2, towerHeight);
+        shape.lineTo(-towerWidth / 2, 0);
+
+        const extrudeSettings = {
+            depth: towerDepth,
+            bevelEnabled: true,
+            bevelThickness: 0.05,
+            bevelSize: 0.05,
+            bevelSegments: 5
+        };
+        const towerGeometry = new THREE.ExtrudeGeometry(shape, extrudeSettings);
+        // Center the extrusion on the Z-axis
+        towerGeometry.translate(0, 0, -towerDepth / 2);
+
+        const towerMesh = new THREE.Mesh(towerGeometry, glassMaterial);
+        towerMesh.castShadow = true;
+        // Glass doesn't typically receive shadows well in standard rendering, 
+        // but we enable it for a more grounded look.
+        towerMesh.receiveShadow = true; 
+        kingdomTowerGroup.add(towerMesh);
+
+
+        // 2. The Podium Base
+        const podiumGeo = new THREE.BoxGeometry(8, 0.4, 8);
+        const podium = new THREE.Mesh(podiumGeo, baseMaterial);
+        podium.position.y = 0.2;
+        podium.receiveShadow = true;
+        kingdomTowerGroup.add(podium);
+
+        // 3. Surrounding Blocks (inspired by the reference image layout)
+        function createBlock(w, h, d, x, z, rotY = 0) {
+            const geo = new THREE.BoxGeometry(w, h, d);
+            const mesh = new THREE.Mesh(geo, baseMaterial);
+            mesh.position.set(x, h / 2, z);
+            mesh.rotation.y = rotY;
+            mesh.castShadow = true;
+            mesh.receiveShadow = true;
+            kingdomTowerGroup.add(mesh);
+        }
+
+        // Add the curved/angled blocks from the reference
+        createBlock(4, 0.8, 3, -3, 2, Math.PI / 6); // Left block
+        createBlock(4, 1.0, 2.5, 3, 1.5, -Math.PI / 8); // Right block
+        createBlock(2, 0.5, 0.8, 0, 3.5); // Back block
+
+        // 4. The Ground Plane
+        const groundGeo = new THREE.PlaneGeometry(50, 50);
+        const ground = new THREE.Mesh(groundGeo, groundMaterial);
+        ground.rotation.x = -Math.PI / 2;
+        ground.receiveShadow = true;
+        scene.add(ground);
+
+
+        // --- ANIMATION LOOP ---
+        function animate() {
+            requestAnimationFrame(animate);
+            controls.update();
+            renderer.render(scene, camera);
+        }
+
+        // --- RESIZE HANDLER ---
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+
+        animate();
+    </script>
 </body>
 </html>
